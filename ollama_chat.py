@@ -1,5 +1,6 @@
 import requests
 import json
+import os
 
 def ask_ollama(prompt, model="llama3", timeout=60):
     """
@@ -14,12 +15,37 @@ def ask_ollama(prompt, model="llama3", timeout=60):
         str: The AI model's response or an error message
     """
     try:
-        # Make request to Ollama API
+        # ------------------ Load UK Visa Knowledge ------------------
+        knowledge_path = os.path.join("knowledge_base", "uk_visa_info.txt")
+        if os.path.exists(knowledge_path):
+            with open(knowledge_path, "r") as f:
+                visa_knowledge = f.read()
+        else:
+            visa_knowledge = "No UK visa knowledge base found."
+
+        # ------------------ Build Full Prompt ------------------
+        full_prompt = f"""
+You are an expert UK visa consultant. Use the following official UK visa information to answer user questions accurately.
+
+UK VISA KNOWLEDGE:
+{visa_knowledge}
+
+USER QUESTION:
+{prompt}
+
+Instructions:
+- Only use information from the UK visa knowledge section when applicable.
+- If unsure, ask for clarification.
+- Keep answers clear, concise, and friendly.
+- If the user's question doesn't relate to visas, politely redirect them.
+"""
+
+        # ------------------ Send Request to Ollama ------------------
         response = requests.post(
             "http://127.0.0.1:11434/api/generate",
             json={
                 "model": model,
-                "prompt": prompt,
+                "prompt": full_prompt,
                 "stream": True,
                 "options": {
                     "temperature": 0.7,  # Makes responses more natural
@@ -31,40 +57,34 @@ def ask_ollama(prompt, model="llama3", timeout=60):
             headers={'Content-Type': 'application/json'}
         )
         
-        # Check if request was successful
         response.raise_for_status()
         
-        # Parse streaming response
+        # ------------------ Parse Streaming Response ------------------
         full_reply = ""
         for line in response.iter_lines():
             if line:
                 try:
-                    # Decode the line and parse JSON
                     data_str = line.decode("utf-8")
                     data = json.loads(data_str)
                     
-                    # Extract response text
                     if "response" in data:
                         full_reply += data["response"]
                     
-                    # Check if this is the final response
                     if data.get("done", False):
                         break
                         
                 except json.JSONDecodeError:
-                    # Skip malformed JSON lines
                     continue
                 except Exception:
-                    # Skip any other parsing errors
                     continue
         
-        # Clean up and return response
         cleaned_reply = full_reply.strip()
         if not cleaned_reply:
             return "I'm sorry, I didn't receive a proper response. Could you please try asking your question again?"
         
         return cleaned_reply
 
+    # ------------------ Error Handling ------------------
     except requests.exceptions.ConnectionError:
         return "⚠️ Cannot connect to Ollama. Please make sure Ollama is running with 'ollama serve' and the llama3 model is installed with 'ollama pull llama3'."
     
