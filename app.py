@@ -54,22 +54,10 @@ if user_input:
         role = "User" if msg["role"] == "user" else "Assistant"
         conversation_history += f"{role}: {msg['content']}\n"
 
-    # ------------------- Load Knowledge Base -------------------
-    knowledge_text = ""
-    kb_path = os.path.join("knowledge_base", "uk_visa_info.txt")
-    if os.path.exists(kb_path):
-        with open(kb_path, "r", encoding="utf-8") as kb_file:
-            knowledge_text = kb_file.read()
-    else:
-        knowledge_text = "No local visa data found."
-
     # ------------------- Build AI Prompt -------------------
     ai_prompt = f"""
 You are an expert UK visa consultant and helpful assistant. 
 You provide accurate, helpful information about UK visa requirements, eligibility, and application processes.
-
-REFERENCE MATERIAL:
-{knowledge_text[:6000]}
 
 CONVERSATION CONTEXT:
 {conversation_history}
@@ -77,11 +65,11 @@ CONVERSATION CONTEXT:
 USER'S QUESTION: {user_input}
 
 INSTRUCTIONS:
-- Use the reference material above for accurate answers.
-- If the info isn’t in the reference, reason logically or suggest visiting the official GOV.UK site.
+- Provide accurate UK visa information based on your knowledge.
+- If you need more details to give a complete answer, ask follow-up questions.
 - Be professional, friendly, and clear.
 - Keep answers short (2–4 sentences) unless detail is needed.
-- If unsure, clarify with follow-up questions instead of guessing.
+- If unsure about specific rules, suggest visiting the official GOV.UK site.
 """
 
     # ------------------- Generate AI Response -------------------

@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+import time
 
 def fetch_gov_uk_visa_info():
     base_url = "https://www.gov.uk/browse/visas-immigration"
@@ -32,7 +33,11 @@ def fetch_gov_uk_visa_info():
     for i, url in enumerate(links[:15]):  # Limit to 15 pages for speed (can increase later)
         print(f"📄 Fetching page {i+1}/{len(links)}: {url}")
         try:
-            page = requests.get(url)
+            # Add delay to be respectful to the server
+            if i > 0:
+                time.sleep(1)
+                
+            page = requests.get(url, timeout=10)
             page.raise_for_status()
             page_soup = BeautifulSoup(page.text, "html.parser")
 
@@ -41,7 +46,11 @@ def fetch_gov_uk_visa_info():
             title = page_soup.find("h1").get_text(strip=True) if page_soup.find("h1") else url
             page_text = "\n".join(paragraphs)
 
-            collected_data.append(f"\n\n---\n## {title}\nSource: {url}\n\n{page_text}")
+            # Only add if we got meaningful content
+            if page_text.strip() and len(page_text) > 100:
+                collected_data.append(f"\n\n---\n## {title}\nSource: {url}\n\n{page_text}")
+        except requests.exceptions.Timeout:
+            print(f"⏰ Timeout for {url}")
         except Exception as e:
             print(f"⚠️ Skipped {url} due to error: {e}")
 
