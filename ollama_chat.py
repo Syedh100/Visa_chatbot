@@ -2,39 +2,29 @@ import requests
 import json
 import os
 
-# talk to the ollama model
-def ask_ollama(prompt, model="llama3", timeout=60, debug=False):
-    """
-    Send a message to the local Ollama model and get a reply.
-    """
-
-    # load the visa info if it exists
-    data_path = os.path.join("Knowledge_base", "uk_visa_info.txt")
-    if os.path.exists(data_path):
-        with open(data_path, "r", encoding="utf-8") as f:
+def ask_ollama(prompt, model="llama3", timeout=60):
+    # load visa info
+    file_path = os.path.join("knowledge_base", "uk_visa_info.txt")
+    visa_info = ""
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as f:
             visa_info = f.read()
     else:
-        visa_info = "No visa information found."
+        visa_info = "No visa info found"
 
-    # build the full message for the model
+    # make prompt
     full_prompt = f"""
-You are a UK visa assistant.
-Use the info below to answer the user’s questions accurately.
-
-UK Visa Knowledge:
-{visa_info}
-
-User Question:
-{prompt}
-
-Instructions:
-- Keep answers short and clear.
-- Be friendly and polite.
-- If the question isn't about visas, let the user know.
+    You help with UK visas. Use this info:
+    
+    {visa_info}
+    
+    Question: {prompt}
+    
+    Answer clearly.
     """
 
-    # send request to ollama
     try:
+        # send to ollama
         response = requests.post(
             "http://127.0.0.1:11434/api/generate",
             json={
@@ -43,16 +33,15 @@ Instructions:
                 "stream": True,
                 "options": {
                     "temperature": 0.7,
-                    "top_p": 0.9,
-                    "max_tokens": 500
+                    "max_tokens": 300
                 }
             },
-            timeout=timeout,
-            headers={'Content-Type': 'application/json'}
+            timeout=timeout
         )
-
+        
         response.raise_for_status()
-
+        
+        # get response
         reply = ""
         for line in response.iter_lines():
             if line:
@@ -65,25 +54,23 @@ Instructions:
                 except:
                     continue
 
-        if not reply.strip():
-            return "Sorry, I didn’t get a proper response. Try asking again."
-        if debug:
-            reply += "\n\n[Debug: Model used = llama3]"
-        return reply.strip()
+        if reply.strip():
+            return reply.strip()
+        else:
+            return "No response from AI"
 
-    # handle errors
     except requests.exceptions.ConnectionError:
-        return "Could not connect to Ollama. Make sure it’s running with 'ollama serve'."
+        return "Cannot connect to Ollama"
+
     except requests.exceptions.Timeout:
-        return "The request took too long. Try again with a shorter question."
+        return "Request timeout"
+
     except Exception as e:
         return f"Error: {str(e)}"
 
-
-# check if ollama is running
 def check_ollama_status():
     try:
-        res = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
-        return res.status_code == 200
+        response = requests.get("http://127.0.0.1:11434/api/tags", timeout=5)
+        return response.status_code == 200
     except:
         return False

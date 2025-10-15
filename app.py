@@ -2,141 +2,122 @@ import streamlit as st
 import os
 from ollama_chat import ask_ollama, check_ollama_status
 
-# page setup
 st.set_page_config(page_title="UK Visa Chatbot", page_icon="🧠", layout="centered")
 st.title("UK Visa Chatbot")
 
-# check ollama connection
+st.write("Ask me about UK visas")
+
+# check if ai works
 if check_ollama_status():
-    st.success("AI is connected and ready")
+    st.success("AI is working")
 else:
-    st.error("AI not connected. Run 'ollama serve' and make sure llama3 is installed")
+    st.error("AI not working - start Ollama")
 
-st.write("Ask me anything about UK visas, like eligibility or requirements")
-
-# sidebar stuff
+# sidebar
 with st.sidebar:
     st.write("Options")
-    debug_mode = st.checkbox("Show debug info")
     if st.button("Clear chat"):
         st.session_state.clear()
         st.rerun()
 
-# store messages and user info
+# setup
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "user_data" not in st.session_state:
-    st.session_state.user_data = {
-        "nationality": None,
-        "purpose": None,
-        "duration": None
-    }
+    st.session_state.user_data = {}
 
-# show chat history
+# show old messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# user input
-user_input = st.chat_input("Type your question here")
+# get input
+user_input = st.chat_input("Type here")
 
 if user_input:
+    # add message
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.write(user_input)
 
-    # clear chat if asked
-    if any(word in user_input.lower() for word in ["restart", "start over", "clear"]):
+    # restart check
+    if "restart" in user_input.lower() or "clear" in user_input.lower():
         st.session_state.clear()
         st.rerun()
 
-    # extract info from what user says
+    # remember stuff
     text = user_input.lower()
+    data = st.session_state.user_data
 
     # nationality
-    countries = {
-        "indian": "Indian", "pakistan": "Pakistani", "nigerian": "Nigerian",
-        "bangladesh": "Bangladeshi", "american": "American", "canadian": "Canadian",
-        "australian": "Australian", "chinese": "Chinese", "french": "French",
-        "german": "German", "spanish": "Spanish"
-    }
-    for c in countries:
-        if c in text:
-            st.session_state.user_data["nationality"] = countries[c]
-            break
+    if "indian" in text or "india" in text:
+        data["nationality"] = "Indian"
+    elif "pakistan" in text:
+        data["nationality"] = "Pakistani"
+    elif "nigerian" in text:
+        data["nationality"] = "Nigerian"
+    elif "american" in text:
+        data["nationality"] = "American"
+    elif "canadian" in text:
+        data["nationality"] = "Canadian"
+    elif "chinese" in text:
+        data["nationality"] = "Chinese"
+    elif "australian" in text:
+        data["nationality"] = "Australian"
 
     # purpose
     if "study" in text:
-        st.session_state.user_data["purpose"] = "study"
+        data["purpose"] = "study"
     elif "work" in text:
-        st.session_state.user_data["purpose"] = "work"
-    elif any(word in text for word in ["visit", "tour", "holiday"]):
-        st.session_state.user_data["purpose"] = "tourism"
+        data["purpose"] = "work"
+    elif "tour" in text or "visit" in text:
+        data["purpose"] = "tourism"
     elif "business" in text:
-        st.session_state.user_data["purpose"] = "business"
+        data["purpose"] = "business"
     elif "family" in text:
-        st.session_state.user_data["purpose"] = "family"
+        data["purpose"] = "family"
 
     # duration
-    if any(word in text for word in ["week", "month", "year", "day"]):
-        st.session_state.user_data["duration"] = user_input
+    if "week" in text or "month" in text:
+        data["duration"] = user_input
 
-    # what info we know
-    nationality = st.session_state.user_data["nationality"] or "Not mentioned"
-    purpose = st.session_state.user_data["purpose"] or "Not mentioned"
-    duration = st.session_state.user_data["duration"] or "Not mentioned"
+    # make context
+    nationality = data.get("nationality", "Not mentioned")
+    purpose = data.get("purpose", "Not mentioned")
+    duration = data.get("duration", "Not mentioned")
 
-    user_info = f"""
-Nationality: {nationality}
-Purpose: {purpose}
-Duration: {duration}
-    """
+    user_info = f"Nationality: {nationality}, Purpose: {purpose}, Duration: {duration}"
 
-    # recent chat for context
-    history = st.session_state.messages[-6:]
-    conversation = ""
-    for msg in history:
-        conversation += f"{msg['role']}: {msg['content']}\n"
+    # get recent messages
+    recent = st.session_state.messages[-4:]
+    conv = ""
+    for msg in recent:
+        conv += f"{msg['role']}: {msg['content']}\n"
 
-    # main prompt for AI
+    # make prompt
     prompt = f"""
-You are a friendly UK visa assistant.
-Use this info to answer questions and give advice.
-
-User info:
-{user_info}
-
-Conversation so far:
-{conversation}
-
-New message: {user_input}
-
-If something is missing like nationality, purpose, or duration, ask for it nicely.
-Keep replies short, clear, and friendly.
+    You help with UK visas.
+    
+    User info: {user_info}
+    
+    Chat: {conv}
+    
+    Question: {user_input}
+    
+    Answer helpfully.
     """
 
-    # get reply from AI
-    with st.spinner("Thinking..."):
+    # get response
+    with st.spinner("Typing..."):
         try:
-            answer = ask_ollama(prompt, debug=debug_mode)
+            response = ask_ollama(prompt)
+            if not response:
+                response = "Sorry, no response. Try again."
         except Exception as e:
-            answer = f"Error: {str(e)}"
+            response = f"Error: {str(e)}"
 
-    # check if we are missing key info
-    missing = []
-    if not st.session_state.user_data["nationality"]:
-        missing.append("your nationality")
-    if not st.session_state.user_data["purpose"]:
-        missing.append("the reason for your visit")
-    if not st.session_state.user_data["duration"]:
-        missing.append("how long you plan to stay")
-
-    if missing and not any(word in text for word in ["nationality", "country", "stay", "visit"]):
-        follow_up = f"Before I can give you proper advice, could you tell me {', and '.join(missing)}?"
-        answer += f"\n\n{follow_up}"
-
-    # show answer
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+    # show response
+    st.session_state.messages.append({"role": "assistant", "content": response})
     with st.chat_message("assistant"):
-        st.write(answer)
+        st.write(response)
