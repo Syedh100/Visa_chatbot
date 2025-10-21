@@ -12,7 +12,7 @@ st.write("Ask me about UK visas")
 if check_ollama_status():
     st.success("AI is working")
 else:
-    st.error("AI not working - start Ollama")
+    st.info("Using basic mode - AI features limited")
 
 # sidebar
 with st.sidebar:
