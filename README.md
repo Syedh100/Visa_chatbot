@@ -1,55 +1,34 @@
-UK Visa Chatbot
-
-An AI-powered chatbot that helps users understand UK visa eligibility, requirements, and application steps.
-Built with Streamlit (front end), Ollama + Llama 3 (local LLM), and a small GOV.UK scraper to keep facts grounded.
+This is a simple AI chatbot that helps users with UK visa questions.
+It uses Streamlit for the web app and Ollama (Llama 3) for local AI responses.
 
 ⸻
 
-Features
-	•	Conversational chat UI (Streamlit)
-	•	Local LLM via Ollama (no API keys or cloud costs)
-	•	Guided flow to collect key details (nationality, purpose, duration)
-	•	Knowledge grounding from official GOV.UK pages
-	•	One-command startup using Docker + start_chatbot.sh
+ What It Does
+	•	Lets users chat and ask visa-related questions
+	•	Runs fully on your computer (no API keys needed)
+	•	Works through Docker or directly with Python
 
-⸻
+ How to Run (Easiest Way — Docker)
 
-Architecture 
-	•	app.py – Streamlit UI + conversation flow (collects user details and builds prompts)
-	•	ollama_chat.py – Thin wrapper that calls the local Ollama API (Llama 3)
-	•	update_visa_data.py – Scrapes relevant GOV.UK pages and saves text under Knowledge_base/
-	•	start_chatbot.sh – Automates Docker steps (start Ollama, pull model, build & run app)
-	•	Dockerfile – Containerizes the Streamlit app
-	•	Knowledge_base/uk_visa_info.txt – Scraped GOV.UK content used to ground answers
+Step 1: Make sure you have Docker Desktop installed and running
 
-⸻
+If you don’t have it, download it from:
+👉 https://www.docker.com/products/docker-desktop
 
-Quick Start (recommended)
+Step 2: Clone this project
 
-Prereqs: Docker Desktop installed and running.
-
-# clone and enter the project
+Open your terminal and run:
 git clone https://github.com/Syedh100/Visa_chatbot.git
 cd Visa_chatbot
 
-# run everything with one command
-bash start_chatbot.sh
+Step 3: Start everything
 
-The script will:
-	1.	Clean up any old containers
-	2.	Start an Ollama container and expose port 11434
-	3.	Pull the llama3 model if not present
-	4.	Build the chatbot image
-	5.	Launch the Streamlit app on port 8501
+Run this command:bash start_chatbot.sh
+This will:
+	1.	Start Ollama (the AI)
+	2.	Download the Llama 3 model (if not already installed)
+	3.	Build and run the chatbot automatically
 
-Run without the script (manual / learning mode)
+Step 4: Open the chatbot
 
-1) Start Ollama (as a container)
-docker run -d -v ollama:/root/.ollama -p 11434:11434 --name ollama ollama/ollama
-docker exec -it ollama ollama pull llama3
-
-2) Build & run the chatbot
-docker build -t visa-chatbot .
-# link the app container to the ollama container
-docker run -p 8501:8501 --link ollama visa-chatbot
-
+Once it’s done, go to your browser and visit the link they provide in terminal 
