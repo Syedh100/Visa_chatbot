@@ -1,4 +1,3 @@
-cd Visa_chatbot[Visa chatbot readme.md](https://github.com/user-attachments/files/23055224/Visa.chatbot.readme.md)
 # 🇬🇧 UK Visa Chatbot
 
 This is a simple AI chatbot that helps users with UK visa questions.  
